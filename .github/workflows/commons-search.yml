@@ -1,0 +1,42 @@
+name: commons-search
+on:
+  push:
+    paths: ['commons/queries.txt']
+permissions:
+  contents: write
+jobs:
+  s:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Search and download
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,urllib.parse,os,hashlib,time
+          UA={'User-Agent':'NaplesSorted/1.0 (info@getnaplessorted.com)'}
+          def get(u):
+              return json.load(urllib.request.urlopen(urllib.request.Request(u,headers=UA)))
+          os.makedirs('commons/search',exist_ok=True)
+          meta=[]
+          for q in open('commons/queries.txt').read().split('\n'):
+              q=q.strip()
+              if not q: continue
+              u='https://commons.wikimedia.org/w/api.php?'+urllib.parse.urlencode({'action':'query','format':'json','generator':'search','gsrsearch':'filetype:bitmap '+q,'gsrnamespace':6,'gsrlimit':8,'prop':'imageinfo','iiprop':'url|extmetadata|size','iiurlwidth':1600})
+              try: d=get(u)
+              except Exception as e: print('ERR',q,e); continue
+              for p in (d.get('query',{}).get('pages',{}) or {}).values():
+                  ii=p['imageinfo'][0]; em=ii.get('extmetadata',{})
+                  if ii.get('width',0)<1200: continue
+                  h=hashlib.md5(p['title'].encode()).hexdigest()[:10]
+                  fn=f'commons/search/{h}.jpg'
+                  try:
+                      urllib.request.urlretrieve and open(fn,'wb').write(urllib.request.urlopen(urllib.request.Request(ii['thumburl'],headers=UA)).read())
+                  except Exception as e: print('dl err',e); continue
+                  meta.append({'q':q,'title':p['title'],'file':fn,'w':ii['width'],'h':ii['height'],
+                    'artist':em.get('Artist',{}).get('value',''),'license':em.get('LicenseShortName',{}).get('value','')})
+                  time.sleep(0.5)
+          json.dump(meta,open('commons/search/meta.json','w'),indent=1,ensure_ascii=False)
+          PY
+      - run: |
+          git config user.name naplessorted; git config user.email info@getnaplessorted.com
+          git add commons/search; git commit -m "commons search" || true; git push
