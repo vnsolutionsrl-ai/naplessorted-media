@@ -21,12 +21,12 @@ jobs:
           for q in open('commons/queries.txt').read().split('\n'):
               q=q.strip()
               if not q: continue
-              u='https://commons.wikimedia.org/w/api.php?'+urllib.parse.urlencode({'action':'query','format':'json','generator':'search','gsrsearch':'filetype:bitmap '+q,'gsrnamespace':6,'gsrlimit':8,'prop':'imageinfo','iiprop':'url|extmetadata|size','iiurlwidth':1600})
+              u='https://commons.wikimedia.org/w/api.php?'+urllib.parse.urlencode({'action':'query','format':'json','generator':'search','gsrsearch':'filetype:bitmap '+q,'gsrnamespace':6,'gsrlimit':12,'prop':'imageinfo','iiprop':'url|extmetadata|size','iiurlwidth':2400})
               try: d=get(u)
               except Exception as e: print('ERR',q,e); continue
               for p in (d.get('query',{}).get('pages',{}) or {}).values():
                   ii=p['imageinfo'][0]; em=ii.get('extmetadata',{})
-                  if ii.get('width',0)<1200: continue
+                  if ii.get('width',0)<1800: continue
                   h=hashlib.md5(p['title'].encode()).hexdigest()[:10]
                   fn=f'commons/search/{h}.jpg'
                   try:
